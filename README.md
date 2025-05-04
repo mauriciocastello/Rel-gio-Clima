@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relógio e Clima</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      text-align: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      transition: background-image 1s ease;
+    }
+
+    .container {
+      padding-top: 30px;
+    }
+
+    .relogio-digital {
+      font-size: 3em;
+      margin-bottom: 30px;
+    }
+
+    .relogio-analogico {
+      width: 300px;
+      height: 300px;
+      border: 10px solid #000;
+      border-radius: 50%;
+      margin: 0 auto;
+      position: relative;
+      background: white;
+    }
+
+    .ponteiro {
+      position: absolute;
+      background: #000;
+      transform-origin: bottom center;
+      bottom: 50%;
+      left: 50%;
+    }
+
+    .hora {
+      width: 6px;
+      height: 80px;
+    }
+
+    .minuto {
+      width: 4px;
+      height: 110px;
+    }
+
+    .segundo {
+      width: 2px;
+      height: 130px;
+      background: red;
+    }
+
+    .numero {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      text-align: center;
+      line-height: 30px;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: black;
+      text-shadow: 1px 1px 2px #aaa;
+      transform: translate(-50%, -50%);
+    }
+
+    .info {
+      font-size: 1.2em;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="relogio-digital" id="relogioDigital">00:00:00</div>
+
+    <div class="relogio-analogico" id="relogioAnalogico">
+      <div class="ponteiro hora" id="ponteiroHora"></div>
+      <div class="ponteiro minuto" id="ponteiroMinuto"></div>
+      <div class="ponteiro segundo" id="ponteiroSegundo"></div>
+
+      <script>
+        for (let i = 1; i <= 12; i++) {
+          const angulo = (i * 30) * (Math.PI / 180);
+          const raio = 135;
+          const x = 150 + raio * Math.sin(angulo);
+          const y = 150 - raio * Math.cos(angulo);
+
+          document.write(`<div class="numero" style="top:${y}px; left:${x}px;">${i}</div>`);
+        }
+      </script>
+    </div>
+
+    <div class="info" id="dataAtual">Carregando data...</div>
+    <div class="info" id="temperatura">Carregando temperatura...</div>
+    <div class="info" id="sensacao">Carregando sensação térmica...</div>
+    <div class="info" id="nascerSol">Carregando nascer do sol...</div>
+    <div class="info" id="porSol">Carregando pôr do sol...</div>
+    <div class="info" id="chuva">Carregando probabilidade de chuva...</div>
+  </div>
+
+  <script>
+    function atualizarRelogio() {
+      const agora = new Date();
+
+      const hora = agora.getHours().toString().padStart(2, '0');
+      const minuto = agora.getMinutes().toString().padStart(2, '0');
+      const segundo = agora.getSeconds().toString().padStart(2, '0');
+      document.getElementById('relogioDigital').textContent = `${hora}:${minuto}:${segundo}`;
+
+      const grauHora = ((agora.getHours() % 12) + agora.getMinutes() / 60) * 30;
+      const grauMinuto = agora.getMinutes() * 6;
+      const grauSegundo = agora.getSeconds() * 6;
+
+      document.getElementById('ponteiroHora').style.transform = `rotate(${grauHora}deg)`;
+      document.getElementById('ponteiroMinuto').style.transform = `rotate(${grauMinuto}deg)`;
+      document.getElementById('ponteiroSegundo').style.transform = `rotate(${grauSegundo}deg)`;
+
+      const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('dataAtual').textContent = agora.toLocaleDateString('pt-BR', opcoes);
+    }
+
+    function obterInformacoesClimaticas() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset,precipitation_probability_max&hourly=apparent_temperature&timezone=auto`;
+
+          fetch(url)
+            .then(resp => resp.json())
+            .then(dados => {
+              const tempAtual = dados.current_weather.temperature;
+              const sensacao = dados.hourly.apparent_temperature[0];
+              const nascer = dados.daily.sunrise[0].split("T")[1];
+              const por = dados.daily.sunset[0].split("T")[1];
+              const chuva = dados.daily.precipitation_probability_max[0];
+
+              document.getElementById('temperatura').textContent = `Temperatura atual: ${tempAtual}°C`;
+              document.getElementById('sensacao').textContent = `Sensação térmica: ${sensacao}°C`;
+              document.getElementById('nascerSol').textContent = `Nascer do sol: ${nascer}`;
+              document.getElementById('porSol').textContent = `Pôr do sol: ${por}`;
+              document.getElementById('chuva').textContent = `Probabilidade de chuva: ${chuva}%`;
+            })
+            .catch(() => {
+              document.getElementById('temperatura').textContent = 'Erro ao obter clima.';
+            });
+        });
+      } else {
+        document.getElementById('temperatura').textContent = 'Geolocalização não suportada.';
+      }
+    }
+
+    const imagensFundo = [
+      "imagens/ceu_limpo.jpg",
+      "imagens/nuvens.jpg",
+      "imagens/nevoeiro.jpg",
+      "imagens/chuvisco.jpg",
+      "imagens/chuva.jpg",
+      "imagens/tempestade.jpg",
+      "imagens/padrao.jpg"
+    ];
+
+    let indiceFundo = 0;
+
+    function trocarFundoAutomaticamente() {
+      document.body.style.backgroundImage = `url('${imagensFundo[indiceFundo]}')`;
+      indiceFundo = (indiceFundo + 1) % imagensFundo.length;
+    }
+
+    window.onload = () => {
+      atualizarRelogio();
+      setInterval(atualizarRelogio, 1000);
+
+      obterInformacoesClimaticas();
+
+      trocarFundoAutomaticamente();
+      setInterval(trocarFundoAutomaticamente, 15000); // troca a cada 15 segundos
+    };
+  </script>
+</body>
+</html>
